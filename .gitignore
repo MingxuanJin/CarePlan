@@ -1,0 +1,16 @@
+.DS_Store
+node_modules/
+__pycache__/
+.pytest_cache/
+.venv/
+venv/
+# Local secrets
+.env
+.env.*
+!.env.example
+*.log
+dist/
+build/
+coverage/
+.idea/
+.vscode/
