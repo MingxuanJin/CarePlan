@@ -13,6 +13,7 @@
 | LLM | [Google Gemini](https://ai.google.dev/) (`google-generativeai`) | 0.3.2 | 生成护理计划 |
 | 数据校验 | [Pydantic](https://docs.pydantic.dev/) | 2.6.1 | 请求体模型校验 |
 | 前端 | 原生 HTML5 / CSS3 / JavaScript (ES6+) | — | 无框架，无构建工具 |
+| 数据库 | [PostgreSQL](https://www.postgresql.org/) | 16 | 持久化存储 |
 | 运行环境 | Python | 3.11 | 后端语言 |
 | 部署 | [Docker](https://www.docker.com/) + Docker Compose | — | 容器化部署 |
 
@@ -25,9 +26,13 @@ careplan-generator/
 │   ├── index.html       # 前端页面结构
 │   ├── styles.css       # 前端样式
 │   └── app.js           # 前端交互逻辑
+├── db/
+│   ├── schema.sql       # PostgreSQL 表结构
+│   ├── seed.sql         # Mock 数据
+│   └── import_db.py     # 命令行导入脚本
 ├── requirements.txt     # Python 依赖
 ├── Dockerfile           # Docker 镜像定义
-├── docker-compose.yml   # Docker 编排
+├── docker-compose.yml   # Docker 编排（Web + PostgreSQL）
 ├── .env                 # 环境变量（本地密钥，不入库）
 ├── .gitignore
 └── design-doc.md        # 设计文档
@@ -52,9 +57,15 @@ careplan-generator/
    docker-compose up --build
    ```
 
+   这会同时启动 Web 应用和 PostgreSQL 数据库。数据库**首次启动**时自动建表并导入 Mock 数据。
+
 3. 访问应用
 
    浏览器打开 http://localhost:8000
+
+4. 连接数据库（可选）
+
+   用 TablePlus 连接 `localhost:5432`，数据库 `careplan`，用户名 `postgres`，密码 `postgres`。
 
 ### 方式二：本地运行
 
@@ -76,6 +87,42 @@ careplan-generator/
 3. 访问应用
 
    浏览器打开 http://localhost:8000
+
+## 数据库
+
+项目使用 PostgreSQL 存储患者、医生、订单和护理计划。
+
+### 数据模型
+
+| 表 | 说明 |
+|----|------|
+| `patients` | 患者（MRN 6 位数字唯一，含 DOB） |
+| `providers` | 医生（NPI 10 位数字唯一） |
+| `orders` | 订单（关联患者与医生，额外诊断和用药史用 JSONB 存储） |
+| `care_plans` | 护理计划（与订单一对一） |
+
+### Docker 一键起库
+
+`docker-compose up` 会自动启动 PostgreSQL，并在**首次启动**时执行 `db/schema.sql` 和 `db/seed.sql`（建表 + 导入 Mock 数据）。
+
+默认连接信息（可通过 `.env` 环境变量覆盖）：
+
+- 主机：`localhost`，端口：`5432`
+- 数据库：`careplan`，用户名：`postgres`，密码：`postgres`
+
+可覆盖的变量：`POSTGRES_DB`、`POSTGRES_USER`、`POSTGRES_PASSWORD`、`POSTGRES_PORT`。
+
+> 若本机 5432 端口已被占用，在 `.env` 中设置 `POSTGRES_PORT=5433` 即可换端口。
+
+### 手动导入
+
+若需重新初始化数据，可用 TablePlus 依次运行 `db/schema.sql` 和 `db/seed.sql`，或用命令行脚本：
+
+```bash
+pip install psycopg2-binary
+createdb careplan
+python db/import_db.py
+```
 
 ## API 端点
 
@@ -99,7 +146,7 @@ careplan-generator/
 
 **刻意保持简单（后续迭代再加）：**
 
-- 数据存储在内存（Python 字典），无数据库
+- 应用数据仍存储在内存（Python 字典），数据库表结构已就绪但代码尚未接入
 - 同步请求，无队列、无 worker、无 WebSocket
 - 无认证、无角色权限控制
 - 无输入校验（NPI 格式、MRN 唯一性、ICD-10 格式等）
