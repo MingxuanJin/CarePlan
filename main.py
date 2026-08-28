@@ -56,14 +56,14 @@ async def create_order(order: OrderInput):
     care_plan = generate_care_plan(order)
 
     # 存储到内存
-    orders_db[order_id] = {
+    orders_db[order_id] = { # 以order_id为键
         "id": order_id,
         "created_at": datetime.now().isoformat(),
-        "order": order.model_dump(),
+        "order": order.model_dump(), # 将pydantic模型转换为字典
         "care_plan": care_plan
     }
 
-    return {"order_id": order_id, "care_plan": care_plan}
+    return {"order_id": order_id, "care_plan": care_plan} # return字典之后fastapi会自动将其转换为JSON格式返回给前端
 
 # 数据查询：所有订单
 @app.get("/api/orders")
