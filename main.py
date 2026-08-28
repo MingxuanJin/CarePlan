@@ -41,8 +41,7 @@ async def serve_static(file_path: str):
     """提供静态文件"""
     filepath = f"static/{file_path}"
     if os.path.exists(filepath):
-        with open(filepath, "r") as f:
-            return f.read()
+        return FileResponse(filepath)
     raise HTTPException(status_code=404, detail="File not found")
 
 
