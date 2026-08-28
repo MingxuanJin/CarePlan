@@ -1,7 +1,7 @@
 // 存储列表数据
 const listData = {
-    additional_diagnoses: [],
-    medication_history: []
+    additional_diagnoses: [], // design doc：Additional diagnoses as a list of ICD-10 codes
+    medication_history: [] // design doc：Medication history as a list of strings
 };
 
 let currentOrderId = null;
