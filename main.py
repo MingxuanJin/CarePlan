@@ -5,11 +5,19 @@ from typing import List, Optional
 import os # 用来读取系统环境变量
 from datetime import datetime
 import google.generativeai as genai
+import redis # 【新增】导入 redis 库
 
 app = FastAPI() # 创建主web应用实例
 
+# 【新增】连接 Redis（默认从环境变量读取）
+redis_client = redis.Redis(
+    host=os.getenv("REDIS_HOST", "redis"),
+    port=int(os.getenv("REDIS_PORT", 6379)),
+    decode_responses=True
+)
+
 # 内存存储
-orders_db = {} # 存储订单数据的普通python字典，重启程序之后会丢失数据
+orders_db = {} # 存储订单数据
 counter = 0 # 用于生成订单ID的计数器
 
 # Gemini 客户端
@@ -51,19 +59,22 @@ async def create_order(order: OrderInput):
     global counter
     counter += 1
     order_id = f"ORD-{counter}"
+    careplan_id = order_id
 
-    # 调用 LLM 生成 care plan
-    care_plan = generate_care_plan(order)
-
-    # 存储到内存
-    orders_db[order_id] = { # 以order_id为键
-        "id": order_id,
+    # 【修改 1】：存入数据库，状态设为 'pending'，不再同步调用 LLM
+    orders_db[careplan_id] = {
+        "id": careplan_id,
+        "status": "pending",
         "created_at": datetime.now().isoformat(),
-        "order": order.model_dump(), # 将pydantic模型转换为字典
-        "care_plan": care_plan
+        "order": order.model_dump(),
+        "care_plan": None
     }
 
-    return {"order_id": order_id, "care_plan": care_plan} # return字典之后fastapi会自动将其转换为JSON格式返回给前端
+    # 【修改 2】：把 careplan_id 推入 Redis 队列
+    redis_client.rpush("careplan_queue", careplan_id)
+
+    # 【修改 3】：立刻返回 "已收到" 和 careplan_id
+    return {"message": "已收到", "careplan_id": careplan_id}
 
 # 数据查询：所有订单
 @app.get("/api/orders")

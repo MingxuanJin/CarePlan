@@ -9,6 +9,7 @@ services:
       - .:/app
     depends_on:
       - db
+      - redis # 增加redis
 
   db:
     image: postgres:16-alpine
@@ -23,6 +24,11 @@ services:
       # 首次启动时自动建表并导入 Mock 数据
       - ./db/schema.sql:/docker-entrypoint-initdb.d/1-schema.sql:ro
       - ./db/seed.sql:/docker-entrypoint-initdb.d/2-seed.sql:ro
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
 
 volumes:
   pgdata:
